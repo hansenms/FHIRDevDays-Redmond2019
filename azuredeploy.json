@@ -52,6 +52,12 @@
                 "description": "AAD client secret"
             }
         },
+        "fhirServerAccessPolicies": {
+            "type": "array",
+            "metadata": {
+                "description": "List of object ids: [ { 'objectId': 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'} ]"
+            }
+        },
         "fhirServerUrl": {
             "type": "string",
             "defaultValue": "[concat('https://', parameters('siteName'), '.azurehealthcareapis.com')]",
@@ -85,37 +91,32 @@
     "variables": {
         "siteName": "[toLower(parameters('siteName'))]",
         "appServicePlanName": "[concat(variables('siteName'),'-asp')]",
-        "configObject": {
-            "FhirServerUrl": "[parameters('fhirServerUrl')]"
-        },
-        "configObjectString": "[string(variables('configObject'))]"
+        "cosmosThroughPut": 1000
     },
     "resources": [
         {
-            "apiVersion": "2017-05-10",
-            "name": "fhir-dashboard-nested-asp-template",
-            "type": "Microsoft.Resources/deployments",
+            "type": "Microsoft.HealthcareApis/services",
+            "kind": "fhir",
+            "name": "[parameters('siteName')]",
+            "apiVersion": "2018-08-20-preview",
+            "location": "[resourceGroup().location]",
+            "tags": {},
             "properties": {
-                "mode": "Incremental",
-                "template": {
-                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-                    "contentVersion": "1.0.0.0",
-                    "parameters": {},
-                    "variables": {},
-                    "resources": [
-                        {
-                            "apiVersion": "2015-08-01",
-                            "name": "[variables('appServicePlanName')]",
-                            "type": "Microsoft.Web/serverfarms",
-                            "location": "[resourceGroup().location]",
-                            "sku": {
-                                "name": "[parameters('appServicePlanSku')]"
-                            },
-                            "properties": {
-                                "name": "[variables('appServicePlanName')]"
-                            }
-                        }
-                    ]
+                "accessPolicies": "[parameters('fhirServerAccessPolicies')]",
+                "authenticationConfiguration": {
+                    "audience": "[parameters('aadAudience')]",
+                    "authority": "[parameters('aadAuthority')]",
+                    "smartProxyEnabled": false
+                },
+                "corsConfiguration": {
+                    "origins": ["*"],
+                    "headers": ["*"],
+                    "methods": ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"],
+                    "maxAge": 1440,
+                    "allowCredentials": false
+                },
+                "cosmosDbConfiguration": {
+                    "offerThroughput": "[variables('cosmosThroughPut')]"
                 }
             }
         },
@@ -141,10 +142,10 @@
             },
             "properties": {
                 "clientAffinityEnabled": false,
-                "serverFarmId": "[resourceId(variables('appServicePlanResourceGroup'), 'Microsoft.Web/serverfarms/', variables('appServicePlanName'))]"
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms/', variables('appServicePlanName'))]"
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName')]"
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
             ],
             "resources": [
                 {
@@ -157,8 +158,8 @@
                     "properties": {
                         "WEBSITE_NODE_DEFAULT_VERSION": "6.9.4",
                         "PROJECT": "[parameters('repositoryProjectPath')]",
-                        "CONFIGFILESTRING": "[variables('configObjectString')]",
-                        "COMMAND": "cd %PROJECT% && xcopy . D:\\home\\site\\wwwroot\\ /E /S /Y && @echo %CONFIGFILESTRING% >D:\\home\\site\\wwwroot\\config.json"
+                        "FhirServerUrl": "[parameters('fhirServerUrl')]",
+                        "COMMAND": "cd %PROJECT% && powershell.exe -command \"(gc index.html) -replace 'https://fhirservicename.azurehealthcareapis.com', '%FhirServerUrl%' | Out-File -Encoding utf8 D:\\home\\site\\wwwroot\\index.html"
                       }
                 },
                 {
@@ -177,7 +178,7 @@
                         "clientSecret": "[parameters('aadClientSecret')]",
                         "issuer": "[parameters('aadAuthority')]",
                         "additionalLoginParams": [
-                            "[concat('resource=',variables('aadAudience'))]"
+                            "[concat('resource=',parameters('aadAudience'))]"
                         ],
                         "isAadAutoProvisioned": false
                     }
@@ -186,7 +187,6 @@
                     "apiVersion": "2015-08-01",
                     "name": "web",
                     "type": "sourcecontrols",
-                    "condition": "[variables('deploySourceCode')]",
                     "dependsOn": [
                         "[resourceId('Microsoft.Web/Sites', variables('siteName'))]",
                         "[resourceId('Microsoft.Web/Sites/config', variables('siteName'), 'appsettings')]"
