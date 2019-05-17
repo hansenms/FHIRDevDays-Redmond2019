@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+    <!--
+
+        This is a very simple JS client that lists patients on a FHIR server.
+        
+        It assumes that it is being served from an Azure Web App configured with
+        App Service Authentication, for more details see:
+        
+        https://docs.microsoft.com/en-us/azure/app-service/overview-authentication-authorization
+ 
+    -->
+
+    <head>
+        <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.3.1.min.js"></script>
+        <script>
+            $(document).ready(function(){
+
+                // Get token from the App Service token store
+                $.get("/.auth/me", function(data, status){
+                    
+                    //Print the token
+                    $("#token").text(data[0].access_token);
+                    
+                    //Get all patients
+                    $.ajax(
+                        {
+                            type: "GET",
+                            url: "https://fhirservicename.azurehealthcareapis.com/Patient",
+                            beforeSend: function(xhdr) {
+                                xhdr.setRequestHeader('Authorization', 'Bearer ' + data[0].access_token);
+                            },
+                            success: function(result, status) {
+                                //Create a list of patients
+                                patientListHtml = '<ol>';
+                                $.each(result.entry, function(index, val){
+                                    patientListHtml += '<li>' + val.resource.name[0].family + ', ' + val.resource.name[0].given + ' (' + val.resource.id + ')';
+                                })
+                                patientListHtml += '</ol>';
+                                $("#patients").html(patientListHtml);
+                            }
+                        }
+                    );
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <h1>FHIR Client Example</h1>
+        <div>
+            <p>
+                <b>Token:</b>
+                <div id="token"></div>
+            </p>
+        </div>
+        <div>
+            <p>
+                <b>Patients:</b>
+                <div id="patients"></div>
+            </p>
+        </div>
+    </body>
+</html>
