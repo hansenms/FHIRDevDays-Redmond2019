@@ -1,6 +1,8 @@
 # FHIR DevDays - Redmond 2019
 
-This repository contains a very basic setup containing:
+This repository contains an example application for [FHIR DevDays 2019 on the Microsoft Redmond Campus](https://www.devdays.com/us/schedule/).
+
+The setup includes:
 
 1. [Azure API for FHIR](https://azure.microsoft.com/en-us/services/azure-api-for-fhir/)
 1. A single page JavaScript app that accesses the FHIR API.
@@ -18,3 +20,7 @@ Then hit the button below to deploy to Azure:
 <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fhansenms%2FFHIRDevDays-Redmond2019%2Fmaster%2Fazuredeploy.json" target="_blank">
     <img src="https://azuredeploy.net/deploybutton.png"/>
 </a>
+
+During the deployment, you will be asked to provide a `siteName`. The web application will be available at `https://siteName.azurewebsites.net`. You must ensure that the Azure AD client application has `https://siteName.azurewebsites.net/.auth/login/aad/callback` as an allowed reply URL.
+
+A more advanced sandbox can be found at: [https://github.com/Microsoft/fhir-server-samples](https://github.com/Microsoft/fhir-server-samples).
