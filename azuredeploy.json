@@ -52,11 +52,21 @@
                 "description": "AAD client secret"
             }
         },
-        "fhirServerAccessPolicies": {
+        "allowedObjectIds": {
             "type": "array",
+            "minLength": 1,
             "metadata": {
-                "description": "List of object ids: [ { 'objectId': 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'} ]"
+                "description": "Array of Azure AD object ids: [ 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', ... ]"
             }
+        },
+        "fhirServerLocation": {
+            "type": "string",
+            "defaultValue": "westus2",
+            "allowedValues": [
+                "ukwest",
+                "northcentralus",
+                "westus2"
+            ]
         },
         "fhirServerUrl": {
             "type": "string",
@@ -91,7 +101,15 @@
     "variables": {
         "siteName": "[toLower(parameters('siteName'))]",
         "appServicePlanName": "[concat(variables('siteName'),'-asp')]",
-        "cosmosThroughPut": 1000
+        "cosmosThroughPut": 1000,
+        "accessPoliciesRaw": [
+            { "objectId": "[if(greater(length(parameters('allowedObjectIds')),0), parameters('allowedObjectIds')[0], '')]" }, 
+            { "objectId": "[if(greater(length(parameters('allowedObjectIds')),1), parameters('allowedObjectIds')[1], '')]" }, 
+            { "objectId": "[if(greater(length(parameters('allowedObjectIds')),2), parameters('allowedObjectIds')[2], '')]" }, 
+            { "objectId": "[if(greater(length(parameters('allowedObjectIds')),3), parameters('allowedObjectIds')[3], '')]" }, 
+            { "objectId": "[if(greater(length(parameters('allowedObjectIds')),4), parameters('allowedObjectIds')[4], '')]" } 
+        ],
+        "accessPolicies": "[take(variables('accessPoliciesRaw'), length(parameters('allowedObjectIds')))]"
     },
     "resources": [
         {
@@ -99,10 +117,10 @@
             "kind": "fhir",
             "name": "[parameters('siteName')]",
             "apiVersion": "2018-08-20-preview",
-            "location": "[resourceGroup().location]",
+            "location": "[parameters('fhirServerLocation')]",
             "tags": {},
             "properties": {
-                "accessPolicies": "[parameters('fhirServerAccessPolicies')]",
+                "accessPolicies": "[variables('accessPolicies')]",
                 "authenticationConfiguration": {
                     "audience": "[parameters('aadAudience')]",
                     "authority": "[parameters('aadAuthority')]",
